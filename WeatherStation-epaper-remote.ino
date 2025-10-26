@@ -9,14 +9,12 @@ Copyright (c) 2017 by Hui Lu
 #include "Wire.h"
 #include "TimeClient.h"
 #include <ESP8266WebServer.h>
-#include <ESP8266mDNS.h>
 #include "heweather.h"
 #include <EEPROM.h>
 #include <SPI.h>
 #include "webpage.h"
 #include "EPD_drive.h"
 #include "EPD_drive_gpio.h"
-// #include "EPD_drive_gpio.cpp"
 #include "bitmaps.h"
 #include "lang.h"
 #include "FS.h"
@@ -355,7 +353,7 @@ void setup()
   Serial.printf("IO init finish at %dms\n\n", millis());
 #endif
 
-  // update_time();//刷新时间，返回则继续向下运行
+update_time();//刷新时间，返回则继续向下运行
 
 #ifdef FAST_MODE
   crc = 1;
@@ -475,10 +473,12 @@ void setup()
     StartPortal();
     show_status(); // 显示进度
 
-delay(2000);
-WiFi.mode(WIFI_STA);
+WiFi.mode(WIFI_OFF);  // 先强制关闭WiFi
+delay(500);           // 等待状态切换
+WiFi.mode(WIFI_STA);  // 再切换到STA模式
+
 WiFi.persistent(false);
-WiFi.disconnect(true); // 不清除保存信息
+WiFi.disconnect(false);  // 清除之前的连接信息（避免残留配置干扰）
 delay(2000);
 
 while (WiFi.status() != WL_CONNECTED) {
@@ -518,8 +518,7 @@ while (WiFi.status() != WL_CONNECTED) {
   }
 
   EPD.EPD_Dis_Full((unsigned char *)EPD.EPDbuffer, 1);
-  EPD.deepsleep();
-  ESP.deepSleep(60 * 60 * 1000000UL);
+  ESP.deepSleep(2* 1000000UL);
 }
 
 
@@ -547,6 +546,15 @@ while (WiFi.status() != WL_CONNECTED) {
   updating = true;
   updateData();
   updating = false;
+
+// WiFi.persistent(false);
+// WiFi.disconnect(true);  // 清除之前的连接信息
+// delay(300);
+// WiFi.mode(WIFI_OFF);    // 关闭WiFi
+// delay(300);
+
+
+
   EPD.EPD_Set_Model(epd_type_index);
   EPD.EPD_init_Full();
   EPD.EPD_Set_Contrast(contrast);
@@ -1611,7 +1619,7 @@ void StartPortal()
 #ifdef debug
   Serial.println("Changing to AP Mode");
 #endif
-  WiFi.setOutputPower(20.5);
+  WiFi.setOutputPower(10.5);
   delay(10);
   WiFi.mode(WIFI_AP_STA);
   delay(10);

@@ -27,7 +27,7 @@ import time
 MOCK_RESPONSE = {
     "now": {
         "cond": "晴",#天气
-        "cond_index": "5",#天气代码
+        "cond_index": "4",#天气代码
         #cond_index说明
 # 0: 晴天
 # 1-3: 多云
