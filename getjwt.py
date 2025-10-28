@@ -5,16 +5,16 @@ import jwt
 
 # Open PEM
 private_key = """-----BEGIN PRIVATE KEY-----
-MC4CAQAwBQYDK2VwBCIEIJBZDqlAhzqPsQnyjAao+RAKA7YDu7b24PADTxiUzCmm
+MC4CAQAwBQYDK2VwBCI你的KEYsQnyjAao+RAKA7YDu7b24PADTxiUzCmm
 -----END PRIVATE KEY-----"""
 
 payload = {
     'iat': int(time.time()) - 30,
     'exp': int(time.time()) + 3000,
-    'sub': '4A2FJMDFAB'
+    'sub': '4A2你的SUBDFAB'
 }
 headers = {
-    'kid': 'CC5BTFHYP9'
+    'kid': 'CC5B你的KIDHYP9'
 }
 
 # Generate JWT
