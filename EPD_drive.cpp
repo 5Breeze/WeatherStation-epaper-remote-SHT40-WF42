@@ -239,17 +239,19 @@ int Duck_EPD::getIcon(int weathercodeindex) {
     date="1-1,1-2,1-3,1-4,1-5,1-6";
     week="1,1,1,1,1,1";
     }
+    //Serial.println("002");
   String code_d_a[point_n],code_n_a[point_n],text_d_a[point_n],text_n_a[point_n],date_a[point_n],week_a[point_n];
   int tmax_a[point_n],tmin_a[point_n];
   int min_data=999,max_data=-999;  
   int tmin_x_cord[point_n],tmax_x_cord[point_n];//将数值转成屏幕坐标
-  
+  //Serial.println("003");
   String temp_min[point_n];
   String temp_max[point_n];
   int j=0,k=0,l=0;
   //分割tmax和tmin
- // Serial.println(tmax); Serial.println(tmin);
-  //Serial.println(code_d);
+ // //Serial.println(tmax); //Serial.println(tmin);
+  ////Serial.println(code_d);
+  //Serial.println("004");
   for(int i=0;i<tmin.length();i++)
   {
     temp_min[j]+=tmin[i];
@@ -257,13 +259,15 @@ int Duck_EPD::getIcon(int weathercodeindex) {
     if(tmin.charAt(i)==char(',')) j++;
     
     }
+    //Serial.println("005");
   for(int i=0;i<tmax.length();i++)
   {
    
     temp_max[k]+=tmax[i];    
    
     if(tmax.charAt(i)==char(',')) k++;
-    } 
+    }
+    //Serial.println("006"); 
   j=0;
   //分割code_d
   for(int i=0;i<code_d.length();i++)
@@ -273,6 +277,7 @@ int Duck_EPD::getIcon(int weathercodeindex) {
     }
   //分割code_n
   j=0;
+  //Serial.println("007");
   for(int i=0;i<code_n.length();i++)
   {
     code_n_a[j]+=code_n[i];    
@@ -280,6 +285,7 @@ int Duck_EPD::getIcon(int weathercodeindex) {
     }
    //分割text_d
    j=0;
+   //Serial.println("008");
    for(int i=0;i<text_d.length();i++)
   {
     if(text_d.charAt(i)==char(',')) j++;
@@ -287,6 +293,7 @@ int Duck_EPD::getIcon(int weathercodeindex) {
     }
    //分割text_n
    j=0;
+   //Serial.println("009");
    for(int i=0;i<text_n.length();i++)
   {
     if(text_n.charAt(i)==char(',')) j++;
@@ -294,22 +301,19 @@ int Duck_EPD::getIcon(int weathercodeindex) {
     }
   //分割week_n
    j=0;
+   //Serial.println("010");
    for(int i=0;i<week.length();i++)
   {
     if(week.charAt(i)==char(',')) j++;
     else week_a[j]+=week[i];   
     }
   j=0;
-   for(int i=0;i<date.length();i++)
-  {
-    if(date.charAt(i)==char(',')) j++;
-    else date_a[j]+=date[i];   
-    }
   for(int i=0;i<point_n;i++)
   {
   tmax_a[i]=temp_max[i].toInt();//Serial.printf("max:%d\n",tmax_a[i]);
   tmin_a[i]=temp_min[i].toInt();//Serial.printf("min:%d\n",tmin_a[i]);
   }
+  //Serial.println("013");
   //找出计算最大最小值
   for(int i=0;i<show_n;i++)
   {
@@ -318,6 +322,7 @@ int Duck_EPD::getIcon(int weathercodeindex) {
     if(tmin_a[i]>max_data) max_data=tmin_a[i];
     if(tmin_a[i]<min_data) min_data=tmin_a[i];
     }
+    //Serial.println("014");
  //转换坐标
   if((max_data-min_data)!=0)
   {
@@ -327,6 +332,7 @@ int Duck_EPD::getIcon(int weathercodeindex) {
     tmax_x_cord[i]=xmax-((xmax-xmin)*(tmax_a[i]-min_data)/(max_data-min_data));   
     }
   }
+  //Serial.println("015");
   int dy=(ymax-ymin)/(show_n-1);
   
   /*
@@ -347,6 +353,7 @@ int Duck_EPD::getIcon(int weathercodeindex) {
   }
  */
 //画折线
+//Serial.println("016");
   for(int i=0;i<show_n-1;i++)
   {          
       DrawLine(tmin_x_cord[i],ymin+dy*i,tmin_x_cord[i+1],ymin+dy*(i+1));   
@@ -355,6 +362,7 @@ int Duck_EPD::getIcon(int weathercodeindex) {
      // DrawLine(tmin_x_cord[i]-1,ymin+dy*i,tmin_x_cord[i+1]-1,ymin+dy*(i+1));   
      // DrawLine(tmax_x_cord[i]-1,ymin+dy*i,tmax_x_cord[i+1]-1,ymin+dy*(i+1));   
   }
+  //Serial.println("017");
  //画圆圈，添加标注
  for(int i=0;i<show_n;i++)
   {    
@@ -382,10 +390,11 @@ int Duck_EPD::getIcon(int weathercodeindex) {
       }
       
       //Serial.print("code_d:");
-      //Serial.println(code_d_a[i]);
+      ////Serial.println(code_d_a[i]);
       //Serial.print("txt_n:");
-      //Serial.println(text_n_a[i]);
+      ////Serial.println(text_n_a[i]);
   } 
+  //Serial.println("001");
     if(EPD_Type!=WF32)Inverse(xmin-83,xmin-69,0,400);
   }
  void Duck_EPD::DrawXline(int start,int end, int x)
@@ -475,17 +484,17 @@ int Duck_EPD::UTFtoUNICODE(unsigned char *code)
   int i=0;int charcount=0;
   while(code[i]!='\0')
   { 
-    //Serial.println("current codei");
-      //Serial.println(code[i],HEX);
-      //  Serial.println(code[i]&0xf0,HEX);
+    ////Serial.println("current codei");
+      ////Serial.println(code[i],HEX);
+      //  //Serial.println(code[i]&0xf0,HEX);
     if(code[i]<=0x7f)  //ascii
     {
       
       UNICODEbuffer[charcount*2]=0x00;
       UNICODEbuffer[charcount*2+1]=code[i];
-        // Serial.println("english or number");
-      // Serial.println(UNICODEbuffer[charcount*2],HEX);
-       //  Serial.println(UNICODEbuffer[charcount*2+1],HEX);
+        // //Serial.println("english or number");
+      // //Serial.println(UNICODEbuffer[charcount*2],HEX);
+       //  //Serial.println(UNICODEbuffer[charcount*2+1],HEX);
       i++;charcount++;
    
       }
@@ -495,7 +504,7 @@ int Duck_EPD::UTFtoUNICODE(unsigned char *code)
       UNICODEbuffer[charcount*2+1]=(code[i]<<6)+(code[i+1]&0x3f);
       UNICODEbuffer[charcount*2]=(code[i]>>2)&0x07;
       i+=2;charcount++;
-     // Serial.println("two bits utf-8");
+     // //Serial.println("two bits utf-8");
       }
      else if((code[i]&0xf0)==0xe0)
     {
@@ -503,9 +512,9 @@ int Duck_EPD::UTFtoUNICODE(unsigned char *code)
       UNICODEbuffer[charcount*2+1]=(code[i+1]<<6)+(code[i+2]&0x7f);
       UNICODEbuffer[charcount*2]=(code[i]<<4)+((code[i+1]>>2)&0x0f);
       
-       //Serial.println("three bits utf-8");
-       // Serial.println(UNICODEbuffer[charcount*2],HEX);
-        // Serial.println(UNICODEbuffer[charcount*2+1],HEX);
+       ////Serial.println("three bits utf-8");
+       // //Serial.println(UNICODEbuffer[charcount*2],HEX);
+        // //Serial.println(UNICODEbuffer[charcount*2+1],HEX);
         i+=3;charcount++;
       }
      else
@@ -523,10 +532,10 @@ void Duck_EPD::DrawUnicodeChar(int16_t x,int16_t y,byte width,byte height,unsign
   if (height%8==0) sizeofsinglechar=(height/8)*width;
   else sizeofsinglechar=(height/8+1)*width;
  offset=(code[0]*0x100+code[1])*sizeofsinglechar;
-  // Serial.println("code[1]");
-  // Serial.println(code[1]);
-   // Serial.println("sizeofsinglechar");
-  // Serial.println(sizeofsinglechar);
+  // //Serial.println("code[1]");
+  // //Serial.println(code[1]);
+   // //Serial.println("sizeofsinglechar");
+  // //Serial.println(sizeofsinglechar);
   File f=LittleFS.open(fontname,"r");
   f.seek(offset,SeekSet);
   char zi[sizeofsinglechar];
@@ -534,10 +543,10 @@ void Duck_EPD::DrawUnicodeChar(int16_t x,int16_t y,byte width,byte height,unsign
  /*for(int i=0;i<32;i++)
   {
      
-   Serial.println(zi[i],HEX);
+   //Serial.println(zi[i],HEX);
     }*/
-  // Serial.println("offset");
-   //Serial.println(offset);
+  // //Serial.println("offset");
+   ////Serial.println(offset);
    if (offset<0xff*sizeofsinglechar && FontIndex<10) 
    {drawXbm(x,y,width,height,(unsigned char *)zi); }
    else  {drawXbm(x,y,width,height,(unsigned char *)zi);}
@@ -730,11 +739,7 @@ void Duck_EPD::InversePixel(int16_t x, int16_t y)
 void Duck_EPD::clearbuffer()
 {
   
-  if(EPD_Type==WF29BZ03||EPD_Type==WF32)
-   {
-    for(int i=0;i<(xDot*yDot/4);i++) EPDbuffer[i]=0xff;
-   }
-  else for(int i=0;i<(xDot*yDot/8);i++) EPDbuffer[i]=0xff;
+  for(int i=0;i<(xDot*yDot/8);i++) EPDbuffer[i]=0xff;
   }
 void Duck_EPD::EPD_Set_Model(byte model)
 {
@@ -774,19 +779,19 @@ unsigned char Duck_EPD::ReadBusy(void)
 if(EPD_Type==WX29||EPD_Type==OPM42||EPD_Type==DKE42_3COLOR||EPD_Type==DKE29_3COLOR)
 {
       if(READ_EPD_BUSY==0) {
-				//Serial.println("Busy is Low \r\n");
+				////Serial.println("Busy is Low \r\n");
       	return 1;
       }
 }
 if(EPD_Type==WF29||EPD_Type==WF58||EPD_Type==WF29BZ03||EPD_Type==WF42||EPD_Type==WF32)
   {
 if(READ_EPD_BUSY!=0) {
-				//Serial.println("Busy is H \r\n");
+				////Serial.println("Busy is H \r\n");
       	return 1;
       }
   }
 	  delay(2);
-   //Serial.println("epd is Busy");
+   ////Serial.println("epd is Busy");
   }
   return 0;
 }
@@ -798,19 +803,19 @@ unsigned char Duck_EPD::ReadBusy_long(void)
 if(EPD_Type==WX29||EPD_Type==OPM42||EPD_Type==DKE42_3COLOR||EPD_Type==DKE29_3COLOR)
 {
       if(READ_EPD_BUSY==0) {
-        //Serial.println("Busy is Low \r\n");
+        ////Serial.println("Busy is Low \r\n");
         return 1;
       }
 }
 if(EPD_Type==WF29||EPD_Type==WF58||EPD_Type==WF29BZ03||EPD_Type==C154||EPD_Type==WF42||EPD_Type==WF32)
   {
 if(READ_EPD_BUSY!=0) {
-        //Serial.println("Busy is H \r\n");
+        ////Serial.println("Busy is H \r\n");
         return 1;
       }
   }
     delay(2);
-   //Serial.println("epd is Busy");
+   ////Serial.println("epd is Busy");
   }
   return 0;
 }

@@ -22,7 +22,7 @@ Copyright (c) 2017 by Hui Lu
 #include <ArduinoJson.h>
 #define ADC_ON digitalWrite(12, 1);
 #define ADC_OFF digitalWrite(12, 0);
-#define debug 0 ///< 调试模式，打开串口输出
+//#define debug 0 ///< 调试模式，打开串口输出
 #define SDA 13
 #define SCL 14
 // #define FAST_MODE
@@ -669,7 +669,7 @@ void updatedisplay()
       EPD.DrawUTF(20, 2, heweather.year.substring(7, 17)); // 日期
       EPD.DrawUTF(47, 2, heweather.year.substring(18));    // 星期
       EPD.fontscale = 1;
-      EPD.DrawUTF(76, 2, heweather.nongli.substring(12)); // 农历
+      EPD.DrawUTF(76, 2, heweather.nongli); // 农历
 
       // 天气信息栏2
       int b = 105;
@@ -774,7 +774,7 @@ void updatedisplay()
       EPD.DrawUTF(20, 2, heweather.year.substring(7, 17)); // 日期
       EPD.DrawUTF(47, 2, heweather.year.substring(18));    // 星期
       EPD.fontscale = 1;
-      EPD.DrawUTF(76, 2, heweather.nongli.substring(12)); // 农历
+      EPD.DrawUTF(76, 2, heweather.nongli); // 农历
 
       // 天气信息栏2
       int x = 20;
