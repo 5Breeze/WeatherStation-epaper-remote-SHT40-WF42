@@ -30,7 +30,7 @@ from lunar_python import Lunar
 from operator import itemgetter
 
 # === 配置区（请按需替换 API KEY / 私钥） ===
-GAODE_KEY = "1c038d43009d1428d93a828c39b888"
+GAODE_KEY = "1c038d4300你的api93a821239b888"
 PRIVATE_KEY = """-----BEGIN PRIVATE KEY-----
 MC4CAQA55DK2VwBCI"你的私钥KEY"zq4112ao+RAKA7YDu7b24PADTxiUzCmm
 -----END PRIVATE KEY-----"""
