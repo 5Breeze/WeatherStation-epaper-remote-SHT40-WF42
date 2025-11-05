@@ -26,7 +26,7 @@ import argparse
 from datetime import datetime
 import requests
 import jwt
-from lunar_python import Lunar
+import lunarcalendar
 from operator import itemgetter
 
 # === 配置区（请按需替换 API KEY / 私钥） ===
@@ -126,18 +126,41 @@ def get_gaode_regeo_from_coord(location):
 def get_lunar_date():
     """计算当前日期对应的农历（格式：乙巳蛇年九月初五）"""
     try:
-        from lunar_python import Lunar
+        from lunarcalendar import Converter, Solar
+        from datetime import datetime
+
+        # 当前公历日期
         today = datetime.now()
-        lunar = Lunar.fromYmd(today.year, today.month, today.day)
-        # 兼容新版 lunar_python（1.5+）
-        if hasattr(lunar, "getYearInGanZhi"):
-            gz_year = lunar.getYearInGanZhi()
-        else:
-            gz_year = lunar.getGanZhiYear()
-        return f"{gz_year}年{lunar.getMonthInChinese()}月{lunar.getDayInChinese()}"
+        solar = Solar(today.year, today.month, today.day)
+
+        # 转换为农历
+        lunar = Converter.Solar2Lunar(solar)
+
+        # 天干地支与生肖映射
+        gan = "甲乙丙丁戊己庚辛壬癸"
+        zhi = "子丑寅卯辰巳午未申酉戌亥"
+        zodiac = "鼠牛虎兔龙蛇马羊猴鸡狗猪"
+
+        # 农历天干地支年份
+        gz_year = gan[(lunar.year - 4) % 10] + zhi[(lunar.year - 4) % 12]
+        shengxiao = zodiac[(lunar.year - 4) % 12]  # 生肖
+
+        # 农历月份和日期中文
+        month_names = ["正", "二", "三", "四", "五", "六", "七", "八", "九", "十", "冬", "腊"]
+        day_prefix = ["初", "十", "廿", "三"]
+        day_names = [""] + [p + "十" if i == 10 else p + "一二三四五六七八九"[i - 1]
+                            for p in day_prefix for i in range(1, 11)]
+
+        # 是否闰月
+        month_str = ("闰" if lunar.isleap else "") + month_names[lunar.month - 1] + "月"
+        day_str = day_names[lunar.day]
+
+        return f"{gz_year}{shengxiao}年{month_str}{day_str}"
     except Exception as e:
         print(f"农历计算失败：{str(e)}")
         return "乙巳蛇年九月初五"
+
+
 
 
 
