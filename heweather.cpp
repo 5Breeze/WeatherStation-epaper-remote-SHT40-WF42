@@ -7,6 +7,9 @@
 //#define debug2 1;
 char client_cert[] = "E";
 char client_key[] = "E";
+
+extern float global_voltage;
+
 heweatherclient::heweatherclient(const char* Serverurl,const char* langstring)
 {
   server=Serverurl;
@@ -199,7 +202,7 @@ void heweatherclient::update()
   }
 
   // Prepare POST body
-  String get_para = "lut1="+city+"&lut2="+lang+"&lut3="+client_name+"&lut4="+ESP.getChipId()+"&lut5="+cdkey+"&bssid="+bssid+"&ssid="+ssid+"&epd_type="+epd_type;
+  String get_para = "lut1="+city+"&lut2="+lang+"&lut3="+client_name+"&lut4="+ESP.getChipId()+"&voltage="+global_voltage+"&bssid="+bssid+"&ssid="+ssid+"&epd_type="+epd_type;
 
   // Detect if `server` is an http URL (e.g. "http://host:port/path") to allow using plain HTTP for local mock server
   bool use_plain_http = false;

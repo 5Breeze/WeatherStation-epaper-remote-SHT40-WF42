@@ -66,6 +66,7 @@ StaticJsonDocument<512> doc;
 File uploadFile;
 
 float accX=0,accY=0,accZ=0;
+float global_voltage;
 
 /****************/
 // SHT4x I2C 地址
@@ -372,6 +373,7 @@ void setup()
 
 #ifdef debug
   Serial.printf("IO init finish at %dms\n\n", millis());
+  get_batt();
 #endif
 
 update_time();//刷新时间，返回则继续向下运行
@@ -494,11 +496,6 @@ update_time();//刷新时间，返回则继续向下运行
     EPD.deepsleep();
     ESP.deepSleep(60 * 60 * 1000000UL);
   }
-  
-  if (accZ > 0.8)
-  {
-    StartPortal();
-  }
 
     show_status(); // 显示进度
 
@@ -557,7 +554,7 @@ while (WiFi.status() != WL_CONNECTED) {
   WiFi.persistent(true);
   WiFi.setAutoConnect(true);
   WiFi.setAutoReconnect(true);
-
+  get_batt();
   /*************************************************
   EPPROM
   *************************************************/
@@ -897,6 +894,33 @@ void updatedisplay()
     EPD.EPD_Dis_Full((unsigned char *)EPD.EPDbuffer, 1);
   }
 }
+
+/**
+ * @brief 获取电池电量
+ * @param void
+ */
+
+void get_batt()
+{
+  /*attention! calibrate it yourself */
+  float voltage;
+  float batt_voltage;
+  long sum = 0;
+
+  ADC_ON;
+  for (int i = 0; i < 100; i++)
+    sum += analogRead(A0);
+  voltage = (float)sum * 5.7 / 102400;
+  batt_voltage = voltage;
+#ifdef debug
+  Serial.println(String(batt_voltage) + "V");
+#endif
+  ADC_OFF;
+  sum = 0;
+  global_voltage=batt_voltage;
+}
+
+
 /**
  * @brief 显示电池电量
  * @param x,y 显示位置
@@ -919,7 +943,7 @@ void dis_batt(int16_t x, int16_t y)
 #endif
   ADC_OFF;
   sum = 0;
-
+  global_voltage=batt_voltage;
   if (batt_voltage <= 3.6)
   {
     EPD.clearbuffer();
