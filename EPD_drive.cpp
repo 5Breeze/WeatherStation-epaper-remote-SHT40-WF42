@@ -1358,7 +1358,11 @@ void Duck_EPD::EPD_Init(void)
     
      
      EPD_WriteCMD(0x00); 
+     if(accX>0)
      EPD_WriteData (0xb7);//b7 a7
+     else
+     EPD_WriteData (0xbb);//b7 a7
+     
      EPD_WriteData (0x0b);
       
      EPD_WriteCMD(0x30);  //PLL

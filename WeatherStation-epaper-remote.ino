@@ -22,9 +22,9 @@ Copyright (c) 2017 by Hui Lu
 #include <ArduinoJson.h>
 #define ADC_ON digitalWrite(12, 1);
 #define ADC_OFF digitalWrite(12, 0);
-//#define debug 0 ///< 调试模式，打开串口输出
-#define SDA 13
-#define SCL 14
+#define debug 0 ///< 调试模式，打开串口输出
+#define SDA_PIN 13
+#define SCL_PIN 14
 // #define FAST_MODE
 ADC_MODE(0);
 /***************************
@@ -65,6 +65,7 @@ Ticker avoidstuck; /// 防止连接服务器过程中卡死
 StaticJsonDocument<512> doc;
 File uploadFile;
 
+float accX=0,accY=0,accZ=0;
 
 /****************/
 // SHT4x I2C 地址
@@ -77,24 +78,23 @@ File uploadFile;
 // LIS2DW12 I2C 地址
 #define LIS2DW12_ADDR 0x19  // 如果 SA0 接地则为0x18
 // 寄存器定义
-#define REG_CTRL1 0x20
-#define REG_CTRL2 0x21
-#define REG_CTRL3 0x22
-#define REG_CTRL6 0x25
-#define REG_CTRL7 0x3F
-#define REG_STATUS 0x27
-#define REG_OUT_X_L 0x28
-#define REG_TAP_THS_X 0x30
-#define REG_TAP_THS_Y 0x31
-#define REG_TAP_THS_Z 0x32
-#define REG_INT_DUR 0x33
-#define REG_WAKE_UP_THS 0x34
-#define REG_CTRL3_INT1_PAD_CTRL 0x23
+#define LIS2DW12_ADDR 0x19
+#define LIS2DW12_CTRL1 0x20
+#define LIS2DW12_CTRL3 0x22
+#define LIS2DW12_CTRL6 0x25
+#define LIS2DW12_STATUS 0x27
+#define LIS2DW12_OUT_X_L 0x28
+#define LIS2DW12_OUT_X_H 0x29
+#define LIS2DW12_OUT_Y_L 0x2A
+#define LIS2DW12_OUT_Y_H 0x2B
+#define LIS2DW12_OUT_Z_L 0x2C
+#define LIS2DW12_OUT_Z_H 0x2D
+
+// CTRL1配置: ODR=0001(1.6Hz), MODE=10(单次转换模式), LP_MODE=00(低功耗模式1, 12位分辨率)
+#define LIS2DW12_CTRL1_CONFIG 0x18
 
 //传感器检测flag
 uint8_t errorSHT40 = 0;
-uint8_t errorACC = 0;
-uint8_t forward_acc = 0; // z轴方向状态
 
 bool readSHT4xData(float &temperature, float &humidity, uint8_t cmd = SHT4X_HIGH_PRECISION) {
   Wire.beginTransmission(SHT4X_ADDR);
@@ -132,184 +132,205 @@ bool readSHT4xData(float &temperature, float &humidity, uint8_t cmd = SHT4X_HIGH
   
   return true;
 }
+// bool safeReadSHT4x(float &temperature, float &humidity) {
+//   Wire.begin(SDA, SCL);               // 确保 I2C 激活（若已激活也没事）
+//   bool ok = readSHT4xData(temperature, humidity);
+//   // 等待 I2C 总线稳定并释放
+//   delay(5);
+//   // 释放 TwoWire（若实现提供 end()）
+//   #if defined(TWOWIRE_H) || defined(WIRE_H) || defined(Wire)
+//   // Some TwoWire implementations provide end(); use if available
+//   Wire.end();
+//   #endif
+//   pinMode(CLK, OUTPUT);
+//   pinMode(DIN, OUTPUT);
+//   digitalWrite(CLK, LOW);
+//   digitalWrite(DIN, LOW);
+//   yield();
+//   return ok;
+// }
 
-// 写寄存器
-int lis2dw12_write_reg(uint8_t reg, uint8_t value) {
+/**
+ * @brief 初始化LIS2DW12传感器
+ * 
+ * 配置为:
+ * - 低功耗模式1 (12位分辨率)
+ * - 单次转换模式
+ * - 软件触发 (SLP_MODE_SEL=1)
+ * - ±2g量程
+ */
+bool initLIS2DW12() {
+   Wire.begin(SDA_PIN, SCL_PIN);               // 确保 I2C 激活（若已激活也没事）
+  // 配置CTRL1: 低功耗模式1 + 单次转换模式
+  if (!writeRegister(LIS2DW12_CTRL1, LIS2DW12_CTRL1_CONFIG)) {
+    return false;
+  }
+  
+  // 配置CTRL3: 使能软件触发 (SLP_MODE_SEL=1)
+  // 初始状态SLP_MODE_1=0
+  if (!writeRegister(LIS2DW12_CTRL3, 0x02)) {
+    return false;
+  }
+  
+  // 配置CTRL6: ±2g满量程, 禁用低噪声模式
+  if (!writeRegister(LIS2DW12_CTRL6, 0x00)) {
+    return false;
+  }
+  pinMode(CLK, OUTPUT);
+  pinMode(DIN, OUTPUT);
+  digitalWrite(CLK, LOW);
+  digitalWrite(DIN, LOW);
+  yield();
+  return true;
+}
+
+/**
+ * @brief 触发单次转换
+ * 
+ * 设置SLP_MODE_1=1启动转换, 转换完成后硬件自动清零
+ */
+bool triggerSingleConversion() {
+  Wire.begin(SDA_PIN, SCL_PIN);
+  // 设置SLP_MODE_SEL=1 和 SLP_MODE_1=1
+  return writeRegister(LIS2DW12_CTRL3, 0x03);
+  // 关闭I2C并重置引脚状态
+  pinMode(CLK, OUTPUT);
+  pinMode(DIN, OUTPUT);
+  digitalWrite(CLK, LOW);
+  digitalWrite(DIN, LOW);
+  yield();
+}
+
+/**
+ * @brief 等待数据就绪标志
+ * 
+ * @return true 数据就绪
+ * @return false 超时
+ */
+bool waitForDataReady() {
+  Wire.begin(SDA_PIN, SCL_PIN);
+  const unsigned long timeout = 10; // 超时时间10ms
+  unsigned long startTime = millis();
+  
+  while (millis() - startTime < timeout) {
+    uint8_t status = readRegister(LIS2DW12_STATUS);
+    if (status & 0x01) { // 检查DRDY位(bit0)
+      return true;
+    }
+    delayMicroseconds(100); // 短暂延时后重试
+  }
+    // 关闭I2C并重置引脚状态
+  pinMode(CLK, OUTPUT);
+  pinMode(DIN, OUTPUT);
+  digitalWrite(CLK, LOW);
+  digitalWrite(DIN, LOW);
+  yield();
+  return false;
+}
+
+/**
+ * @brief 读取三轴加速度数据
+ * @param x 用于存储X轴加速度的指针（单位：g）
+ * @param y 用于存储Y轴加速度的指针（单位：g）
+ * @param z 用于存储Z轴加速度的指针（单位：g）
+ * @return true 读取成功，false 读取失败
+ */
+bool readAcceleration(float* x, float* y, float* z) {
+    // 检查指针有效性
+    if (x == nullptr || y == nullptr || z == nullptr) {
+        return false;
+    }
+
+    Wire.begin(SDA_PIN, SCL_PIN);
+    
+    // 从OUT_X_L寄存器开始连续读取6个字节
+    Wire.beginTransmission(LIS2DW12_ADDR);
+    Wire.write(LIS2DW12_OUT_X_L);
+    bool transmissionOk = (Wire.endTransmission(false) == 0);
+    
+    if (!transmissionOk || Wire.requestFrom((uint8_t)LIS2DW12_ADDR, (uint8_t)6) != 6) {
+        // 读取失败时重置引脚状态
+        pinMode(SCL_PIN, OUTPUT);
+        pinMode(SDA_PIN, OUTPUT);
+        digitalWrite(SCL_PIN, LOW);
+        digitalWrite(SDA_PIN, LOW);
+        yield();
+        return false;
+    }
+    
+    // 读取原始数据
+    uint8_t xlo = Wire.read();
+    uint8_t xhi = Wire.read();
+    uint8_t ylo = Wire.read();
+    uint8_t yhi = Wire.read();
+    uint8_t zlo = Wire.read();
+    uint8_t zhi = Wire.read();
+    
+    // 关闭I2C并重置引脚状态
+  pinMode(CLK, OUTPUT);
+  pinMode(DIN, OUTPUT);
+  digitalWrite(CLK, LOW);
+  digitalWrite(DIN, LOW);
+  yield();
+    
+    // 组合为16位值 (12位数据左对齐, 低4位为0)
+    int16_t x_raw = (int16_t)((xhi << 8) | xlo) >> 4;
+    int16_t y_raw = (int16_t)((yhi << 8) | ylo) >> 4;
+    int16_t z_raw = (int16_t)((zhi << 8) | zlo) >> 4;
+    
+    // 转换为g值 (灵敏度: 0.976 mg/digit = 0.000976 g/digit)
+    const float sensitivity = 0.000976f;
+    *x = x_raw * sensitivity;
+    *y = y_raw * sensitivity;
+    *z = z_raw * sensitivity;
+
+  #ifdef debug
+  // 打印数据（注意指针需要解引用*）
+  Serial.print("X: "); Serial.print(*x, 3); Serial.print(" g\t");  // 保留3位小数更易读
+  Serial.print("Y: "); Serial.print(*y, 3); Serial.print(" g\t");
+  Serial.print("Z: "); Serial.print(*z, 3); Serial.println(" g");
+  #endif
+
+    
+    return true;
+}
+/**
+ * @brief 向寄存器写入数据
+ */
+bool writeRegister(uint8_t reg, uint8_t value) {
   Wire.beginTransmission(LIS2DW12_ADDR);
   Wire.write(reg);
   Wire.write(value);
-  return Wire.endTransmission();
+  return (Wire.endTransmission() == 0);
 }
 
-// 初始化函数
-void LIS2DW12_Init() {
-  // CTRL1: MODE=10 (single conversion), LP_MODE=00
-  lis2dw12_write_reg(REG_CTRL1, 0xA0);
-
-  // CTRL6: 其他功能配置
-  lis2dw12_write_reg(REG_CTRL6, 0x04);
-
-  // TAP thresholds
-  lis2dw12_write_reg(REG_TAP_THS_X, 0x0C);
-  lis2dw12_write_reg(REG_TAP_THS_Y, 0xEC);
-  lis2dw12_write_reg(REG_TAP_THS_Z, 0xEC);
-
-  // CTRL3: INT configuration
-  lis2dw12_write_reg(REG_CTRL3, 0x28);//开漏中断
-
-  // INT_DUR: 中断持续时间
-  lis2dw12_write_reg(REG_INT_DUR, 0x25);
-
-  // WAKE_UP_THS: 唤醒阈值
-  lis2dw12_write_reg(REG_WAKE_UP_THS, 0x80);
-
-  // INT1引脚配置
-  lis2dw12_write_reg(REG_CTRL3_INT1_PAD_CTRL, 0x08);
-
-  // CTRL7: BDU=1, IF_ADD_INC=1
-  lis2dw12_write_reg(REG_CTRL7, 0x20);
-
-}
-
-// 初始化单次转换模式
-void LIS2DW12_InitForSingleConversion() {
-  // 软件复位 CTRL2 <- 0x40
-  lis2dw12_write_reg(REG_CTRL2, 0x40);
-  delay(10);
-
-  // 设置 CTRL2: BDU=1, IF_ADD_INC=1 -> 0x0C
-  lis2dw12_write_reg(REG_CTRL2, 0x0C);
-
-  // 设置 CTRL1: ODR=200Hz, MODE=10 -> 0x50
-  lis2dw12_write_reg(REG_CTRL1, 0x50);
-
-  // 设置 CTRL3: SLP_MODE_SEL=1, SLP_MODE_1=0 -> 0x02
-  lis2dw12_write_reg(REG_CTRL3, 0x02);
-
-  // 设置 CTRL6 (额外配置)
-  lis2dw12_write_reg(REG_CTRL6, 0x10);
-}
-
-// 读取单次转换
-void LIS2DW12_ReadSingleConversion() {
-  uint8_t status = 0;
-
-  // 等待数据就绪
-  do {
-    Wire.beginTransmission(LIS2DW12_ADDR);
-    Wire.write(REG_STATUS);
-    Wire.endTransmission(false); // repeated start
-
-    Wire.requestFrom(LIS2DW12_ADDR, 1);
-    if (Wire.available()) {
-      status = Wire.read();
-    }
-  } while (!(status & 0x01)); // STATUS bit0 = DRDY
-
-  // 读取 X, Y, Z 数据
-  uint8_t data[6];
+/**
+ * @brief 从寄存器读取数据
+ */
+uint8_t readRegister(uint8_t reg) {
   Wire.beginTransmission(LIS2DW12_ADDR);
-  Wire.write(REG_OUT_X_L | 0x80); // 自动递增多字节读取
+  Wire.write(reg);
   Wire.endTransmission(false);
-
-  Wire.requestFrom(LIS2DW12_ADDR, 6);
-  for (int i = 0; i < 6; i++) {
-    if (Wire.available()) data[i] = Wire.read();
+  
+  if (Wire.requestFrom((uint8_t)LIS2DW12_ADDR, (uint8_t)1) != 1) {
+    return 0xFF;
   }
-
-  int16_t x = ((int16_t)data[1] << 8 | data[0]) >> 4;
-  int16_t y = ((int16_t)data[3] << 8 | data[2]) >> 4;
-  int16_t z = ((int16_t)data[5] << 8 | data[4]) >> 4;
-
-  float z_g = z * 0.000976f; // LSB -> g
-
-  if (z_g > 0.8f)
-    forward_acc = 1;
-  else if (z_g < -0.8f)
-    forward_acc = -1;
-  else
-    forward_acc = 0;
-    
-    #ifdef debug
-    Serial.print("forward_acc:");
-    Serial.println(forward_acc);
-    #endif
+  
+  return Wire.read();
 }
 
-//传感器存在检测
-// 检测 SHT4x 是否存在
-bool detectSHT4x() {
-  Wire.beginTransmission(SHT4X_ADDR);
-  uint8_t error = Wire.endTransmission();
-  if (error == 0) {
-    errorSHT40 = 0; // 正常
-    return true;
-  } else {
-    errorSHT40 = 1; // 错误
-    return false;
-  }
-}
-
-// // 检测 LIS2DW12 是否存在
-// bool detectLIS2DW12() {
-//   // 读取 WHO_AM_I 寄存器 0x0F 返回值应为 0x44
-//   const uint8_t WHO_AM_I = 0x0F;
-//   Wire.beginTransmission(LIS2DW12_ADDR);
-//   Wire.write(WHO_AM_I);
-//   if (Wire.endTransmission(false) != 0) {
-//     errorACC = 1;
-//     return false;
-//   }
-//   Wire.requestFrom(LIS2DW12_ADDR, 1);
-//   if (Wire.available()) {
-//     uint8_t id = Wire.read();
-//     if (id == 0x44) {
-//       errorACC = 0;
-//       return true;
-//     }
-//   }
-//   errorACC = 1;
-//   return false;
-// }
-
-// // 调用函数初始化并检测传感器
-// void Sensors_Init() {
-//   digitalWrite(13, 0);
-//   digitalWrite(14, 0);
-//   Wire.setClock(100000);
-//   Wire.begin(13, 14);
-//   #ifdef debug
-//   Serial.println("Detecting sensors...");
-//   #endif
-
-//   if (detectSHT4x()) {
-//     #ifdef debug
-//     Serial.println("SHT4x detected.");
-//     #endif
-//   } else {
-//     #ifdef debug
-//     Serial.println("SHT4x NOT detected!");
-//     #endif
-//   }
-
-//   if (detectLIS2DW12()) {
-//     #ifdef debug
-//     Serial.println("LIS2DW12 detected.");
-//     LIS2DW12_Init();
-//     #endif
-//   } else {
-//     #ifdef debug
-//     Serial.println("LIS2DW12 NOT detected!");
-//     #endif
-//   }
-// }
 void setup()
 {
-// Sensors_Init();
 #ifdef debug
   Serial.begin(115200);
   Serial.printf("Serial begins at %dms\n\n", millis());
 #endif
+
+  initLIS2DW12();
+  triggerSingleConversion();
+  waitForDataReady();
+  readAcceleration(&accX,&accY,&accZ);
+
   read_time_from_rtc_mem(); // 读取时间
 #ifdef debug
   Serial.printf("time read finish at %dms\n\n", millis());
@@ -450,8 +471,12 @@ update_time();//刷新时间，返回则继续向下运行
 #endif
     configFile.close();
   }
-  if (digitalRead(5) == 0)
+
+  if (accZ > 0.8)
+  {
     StartPortal();
+  }
+
   if (!LittleFS.exists("/config.json"))
   {
 
@@ -469,8 +494,12 @@ update_time();//刷新时间，返回则继续向下运行
     EPD.deepsleep();
     ESP.deepSleep(60 * 60 * 1000000UL);
   }
-  if (digitalRead(5) == 0)
+  
+  if (accZ > 0.8)
+  {
     StartPortal();
+  }
+
     show_status(); // 显示进度
 
 WiFi.mode(WIFI_OFF);  // 先强制关闭WiFi
@@ -617,7 +646,7 @@ void loop()
 }
 
 bool safeReadSHT4x(float &temperature, float &humidity) {
-  Wire.begin(SDA, SCL);               // 确保 I2C 激活（若已激活也没事）
+  Wire.begin(SDA_PIN, SCL_PIN);               // 确保 I2C 激活（若已激活也没事）
   bool ok = readSHT4xData(temperature, humidity);
   // 等待 I2C 总线稳定并释放
   delay(5);

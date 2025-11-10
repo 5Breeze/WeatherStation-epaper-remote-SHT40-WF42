@@ -9,7 +9,7 @@
 #define _EPD_DRIVE_H_
 //#include "spline.h"
 
-
+extern float accX;
   static const unsigned char GDVol[] = {0x03,0x00}; // Gate voltage +15V/-15V
   static  unsigned char GDOControl[]={0x01,39,1,0x00}; //for 1.54inch
   static  unsigned char softstart[]={0x0c,0xd7,0xd6,0x9d};
