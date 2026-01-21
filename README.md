@@ -1,6 +1,7 @@
 # WeatherStation-epaper-remote-SHT40-WF42
 基于ESP8266、WF42电子纸屏、SHT40温湿度传感器的远程气象站项目（代码来源：半糖duck），支持获取空气质量、实时/未来天气数据，并通过WF42电子纸屏展示，配套Python服务端动态生成天气JSON，支持WiFi配置及多语言切换。
-![Uploading image.png…]()
+<img width="591" height="410" alt="image" src="https://github.com/user-attachments/assets/0f2adbe9-f8a7-421f-b15a-727fb25dc513" />
+
 
 > 注意：本项目仅适配WF42型号电子纸屏，其他型号电子纸屏需自行调整驱动引脚及时序逻辑。
 
